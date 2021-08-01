@@ -1,0 +1,19 @@
+version: "3.7"
+services:
+  flake8:
+    image: wonkyto/techni-metrics-collector:1.0.1
+    command: flake8
+    volumes:
+      - ./app:/app
+    working_dir: /app
+  run:
+    image: wonkyto/techni-metrics-collector:1.0.1
+    volumes:
+      - ./config:/config
+    working_dir: /app
+  test:
+    image: wonkyto/techni-metrics-collector:1.0.1
+    volumes:
+      - ./app:/app
+      - ./config:/config
+    working_dir: /app

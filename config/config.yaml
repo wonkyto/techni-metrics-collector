@@ -1,0 +1,9 @@
+---
+InfluxDb:
+  'Host': 'influxdb'
+  'Port': '8086'
+  'Database': 'techni-metrics-collector'
+Gateway:
+  'Host': '192.168.0.1'
+  'User': 'root'
+  'Password': 'yourrootpassword'
