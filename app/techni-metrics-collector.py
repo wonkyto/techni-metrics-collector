@@ -2,7 +2,6 @@
 
 import argparse
 import asyncio
-import datetime
 import logging
 import paramiko
 import re
@@ -92,48 +91,48 @@ def parse_if_data(data, name):
     """
     interface = {}
     interface['name'] = name
-    status = False
     for line in data:
         # Get if_name, MAC
         # br-lan    Link encap:Ethernet  HWaddr A4:91:B1:64:21:72
-        m = re.search("^([\w\-]+).*HWaddr ([a-fA-F0-9:]+)", line)
+        m = re.search(r"^([\w\-]+).*HWaddr ([a-fA-F0-9:]+)", line)
         if m:
             interface['if_name'] = m.group(1)
             interface['mac'] = m.group(2)
 
         # Get IP
-        m = re.search("inet addr:([\d\.]+)", line)
+        m = re.search(r"inet addr:([\d\.]+)", line)
         if m:
             interface['ip'] = m.group(1)
 
         # Get up/down status
-        m = re.search("UP BROADCAST RUNNING", line)
+        m = re.search(r"UP BROADCAST RUNNING", line)
         if m:
             interface['status'] = 1
 
         # Get RX packets, errors, drops
         # RX packets:54280044 errors:0 dropped:14834 overruns:0 frame:0
-        m = re.search("RX packets:([\d]+) errors:([\d]+) dropped:([\d]+)", line)
+        m = re.search(r"RX packets:([\d]+) errors:([\d]+) dropped:([\d]+)",
+                      line)
         if m:
-            interface['rx_packets'] =  m.group(1)
-            interface['rx_errors'] =  m.group(2)
-            interface['rx_dropped'] =  m.group(3)
+            interface['rx_packets'] = m.group(1)
+            interface['rx_errors'] = m.group(2)
+            interface['rx_dropped'] = m.group(3)
 
         # Get TX packets, errors, drops
         # TX packets:54280044 errors:0 dropped:14834 overruns:0 frame:0
-        m = re.search("TX packets:([\d]+) errors:([\d]+) dropped:([\d]+)", line)
+        m = re.search(r"TX packets:([\d]+) errors:([\d]+) dropped:([\d]+)",
+                      line)
         if m:
-            interface['tx_packets'] =  m.group(1)
-            interface['tx_errors'] =  m.group(2)
-            interface['tx_dropped'] =  m.group(3)
+            interface['tx_packets'] = m.group(1)
+            interface['tx_errors'] = m.group(2)
+            interface['tx_dropped'] = m.group(3)
 
         # Get bytes
         # RX bytes:16060081777 (14.9 GiB)  TX bytes:114602693632 (106.7 GiB)
-        m = re.search("RX bytes:([\d]+).*TX bytes:([\d]+)", line)
+        m = re.search(r"RX bytes:([\d]+).*TX bytes:([\d]+)", line)
         if m:
-            interface['rx_bytes'] =  m.group(1)
-            interface['tx_bytes'] =  m.group(2)
-
+            interface['rx_bytes'] = m.group(1)
+            interface['tx_bytes'] = m.group(2)
 
     if 'status' not in interface:
         interface['status'] = 0
@@ -151,14 +150,16 @@ def parse_dsl_data(data):
     for line in data:
         # Get Max Rates
         # Max:	Upstream rate = 29536 Kbps, Downstream rate = 56948 Kbps
-        m = re.search("^Max:	Upstream rate = (\d+) Kbps, Downstream rate = (\d+) Kbps", line)
+        m = re.search(r"^Max:	Upstream rate = (\d+) Kbps, Downstream rate = (\d+) Kbps",
+                      line)
         if m:
             dsl['max_up_rate'] = int(m.group(1))
             dsl['max_down_rate'] = int(m.group(2))
 
         # Get Max Bearer Rate 0
         # Bearer:	0, Upstream rate = 22600 Kbps, Downstream rate = 56009 Kbps
-        m = re.search("^Bearer:	0, Upstream rate = (\d+) Kbps, Downstream rate = (\d+) Kbps", line)
+        m = re.search(r"^Bearer:	0, Upstream rate = (\d+) Kbps, Downstream rate = (\d+) Kbps",
+                      line)
         if m:
             dsl['bearer0_up_rate'] = int(m.group(1))
             dsl['bearer0_down_rate'] = int(m.group(2))
@@ -166,27 +167,27 @@ def parse_dsl_data(data):
         # Get SNR
         # SNR (dB):	 5.9		 11.3
         # SNR (dB):\t 5.9\t\t 11.3\n
-        m = re.search("SNR \(dB\):\t ([0-9\.]+)\t\t ([0-9\.]+)", line)
+        m = re.search(r"SNR \(dB\):\t ([0-9\.]+)\t\t ([0-9\.]+)", line)
         if m:
             dsl['snr_down'] = float(m.group(1))
             dsl['snr_up'] = float(m.group(2))
 
         # Get Attn
         # Attn(dB):\t 20.0\t\t 0.0\n
-        m = re.search("Attn\(dB\):\t ([0-9\.]+)\t\t ([0-9\.]+)", line)
+        m = re.search(r"Attn\(dB\):\t ([0-9\.]+)\t\t ([0-9\.]+)", line)
         if m:
             dsl['attn_down'] = float(m.group(1))
             dsl['attn_up'] = float(m.group(2))
 
         # Get Power
         # Pwr(dBm):\t 14.3\t\t 7.6\n
-        m = re.search("Pwr\(dBm\):\t ([0-9\.]+)\t\t ([0-9\.]+)", line)
+        m = re.search(r"Pwr\(dBm\):\t ([0-9\.]+)\t\t ([0-9\.]+)", line)
         if m:
             dsl['pwr_down'] = float(m.group(1))
             dsl['pwr_up'] = float(m.group(2))
 
         # Get Link Uptime in seconds
-        m = re.search("^AS:\s+([\d\.]+)", line)
+        m = re.search(r"^AS:\s+([\d\.]+)", line)
         if m:
             dsl['link_uptime'] = int(m.group(1))
 
@@ -269,8 +270,6 @@ def poll(influx_client, gateway):
         dsl_metrics = prepare_dsl_data(dsl_data)
         metrics.append(dsl_metrics)
 
-    print(metrics)
-
     if influx_client.write_points(metrics):
         logger.debug("Sending metrics to influxdb: successful")
     else:
@@ -283,9 +282,9 @@ def main():
     # Load configure file
     config = load_yaml_file(args.config)
 
-    # We will be running this container in the same docker-compose configuration
-    # as influxdb. To ensure we provide enough time for influxdb to start,
-    # we wait 10 seconds
+    # We will be running this container in the same docker-compose
+    # configuration as influxdb. To ensure we provide enough time
+    # for influxdb to start, we wait 60 seconds
     time.sleep(60)
 
     # Make a connection to the InfluxDB Database
@@ -297,7 +296,8 @@ def main():
 
     # Create a scheduler, and run the poller every 5 minutes
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(poll, 'cron', minute='00,5,10,15,20,25,30,35,40,45,50,55',
+    scheduler.add_job(poll, 'cron',
+                      minute='00,5,10,15,20,25,30,35,40,45,50,55',
                       args=(influx_client, config['Gateway']))
     scheduler.start()
 

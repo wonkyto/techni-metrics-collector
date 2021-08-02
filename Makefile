@@ -1,4 +1,4 @@
-VERSION = 1.0.1
+VERSION = 1.0.2
 IMAGE_NAME ?= wonkyto/techni-metrics-collector:$(VERSION)
 
 build:
