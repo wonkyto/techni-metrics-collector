@@ -43,21 +43,19 @@ def get_args():
     return args
 
 
-def run_cmd(host, user, password, command):
-    """Run a remote command on remote host
+def connect_ssh(host, user, password):
+    """Open an SSH connection to the gateway.
 
-    Returns stdout of command as a string array
+    Returns SSHClient on success, None on failure.
     """
-    result = None
-
-    # Make an ssh connection
+    # Note: AutoAddPolicy accepts any host key without verification.
+    # This is acceptable for a trusted LAN gateway but would be insecure
+    # on an untrusted network.
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
         ssh.connect(host, username=user, password=password, timeout=5)
-        stdin, stdout, stderr = ssh.exec_command(command)
-        result = stdout.readlines()
-        ssh.close()
+        return ssh
     except (
         paramiko.ssh_exception.BadHostKeyException,
         paramiko.ssh_exception.AuthenticationException,
@@ -68,7 +66,23 @@ def run_cmd(host, user, password, command):
         logger.error("timeout")
     except socket.error:
         logger.error("Connection Refused")
-    return result
+    return None
+
+
+def run_cmd(ssh, command):
+    """Run a command over an open SSH connection.
+
+    Returns stdout as a string array, or None on failure.
+    """
+    try:
+        _, stdout, stderr = ssh.exec_command(command)
+        err = stderr.read().decode().strip()
+        if err:
+            logger.warning("stderr from '{}': {}".format(command, err))
+        return stdout.readlines()
+    except paramiko.ssh_exception.SSHException as e:
+        logger.error("Command '{}' failed: {}".format(command, str(e)))
+    return None
 
 
 def load_yaml_file(yaml_file):
@@ -244,21 +258,19 @@ def prepare_dsl_data(dsl_data):
 
 
 def poll(influx_client, gateway):
-    """Poll the network device, send collecte data to influxDB"""
+    """Poll the network device, send collected data to influxDB"""
     logger.info("Polling {}@{}".format(gateway["User"], gateway["Host"]))
 
-    # Get LAN and WAN interface counter data
-    lan_result = run_cmd(
-        gateway["Host"], gateway["User"], gateway["Password"], "ifconfig br-lan"
-    )
-    wan_result = run_cmd(
-        gateway["Host"], gateway["User"], gateway["Password"], "ifconfig ptm0"
-    )
+    ssh = connect_ssh(gateway["Host"], gateway["User"], gateway["Password"])
+    if ssh is None:
+        return
 
-    # Get DSL Stats
-    dsl_result = run_cmd(
-        gateway["Host"], gateway["User"], gateway["Password"], "xdslctl info --stats"
-    )
+    try:
+        lan_result = run_cmd(ssh, "ifconfig br-lan")
+        wan_result = run_cmd(ssh, "ifconfig ptm0")
+        dsl_result = run_cmd(ssh, "xdslctl info --stats")
+    finally:
+        ssh.close()
 
     metrics = []
     if lan_result is not None:
@@ -276,16 +288,17 @@ def poll(influx_client, gateway):
         dsl_metrics = prepare_dsl_data(dsl_data)
         metrics.append(dsl_metrics)
 
-    if influx_client.write_points(metrics):
-        logger.debug("Sending metrics to influxdb: successful")
-    else:
-        logger.debug("Sending metrics to influxdb: failed")
+    if metrics:
+        if influx_client.write_points(metrics):
+            logger.info("Sending metrics to influxdb: successful")
+        else:
+            logger.info("Sending metrics to influxdb: failed")
 
 
 def main():
-    # Get arguements
+    # Get arguments
     args = get_args()
-    # Load configure file
+    # Load config file
     config = load_yaml_file(args.config)
 
     # We will be running this container in the same docker-compose
@@ -306,7 +319,7 @@ def main():
     scheduler.add_job(
         poll,
         "cron",
-        minute="00,5,10,15,20,25,30,35,40,45,50,55",
+        minute="*/5",
         args=(influx_client, config["Gateway"]),
     )
     scheduler.start()

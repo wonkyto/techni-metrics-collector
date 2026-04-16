@@ -1,18 +1,34 @@
-version: "3.7"
 services:
-  flake8:
-    image: wonkyto/techni-metrics-collector:1.0.2
-    command: flake8
+  lint:
+    build:
+      context: .
+      target: dev
+    command: ruff check /app
     volumes:
       - ./app:/app
+  format:
+    build:
+      context: .
+      target: dev
+    command: ruff format /app
+    volumes:
+      - ./app:/app
+  pytest:
+    build:
+      context: .
+      target: dev
+    command: python -m pytest /tests -v
+    volumes:
+      - ./app:/app
+      - ./tests:/tests
     working_dir: /app
   run:
-    image: wonkyto/techni-metrics-collector:1.0.2
+    image: wonkyto/techni-metrics-collector:1.1.0
     volumes:
       - ./config:/config
     working_dir: /app
   test:
-    image: wonkyto/techni-metrics-collector:1.0.2
+    image: wonkyto/techni-metrics-collector:1.1.0
     volumes:
       - ./app:/app
       - ./config:/config

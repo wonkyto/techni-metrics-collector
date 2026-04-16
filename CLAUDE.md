@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 make build    # Build the Docker image (required after Dockerfile or requirements.txt changes)
-make flake8   # Run flake8 linter via Docker
+make lint     # Run ruff linter via Docker
+make format   # Run ruff formatter via Docker
+make pytest   # Run unit tests via Docker
 make test     # Run the script in Docker with local ./app and ./config mounted (fast iteration)
 make run      # Run the collector using the built image with ./config mounted
 ```
