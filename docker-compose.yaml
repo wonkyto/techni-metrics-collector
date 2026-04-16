@@ -23,12 +23,12 @@ services:
       - ./tests:/tests
     working_dir: /app
   run:
-    image: wonkyto/techni-metrics-collector:1.1.0
+    image: wonkyto/techni-metrics-collector:1.1.1
     volumes:
       - ./config:/config
     working_dir: /app
   test:
-    image: wonkyto/techni-metrics-collector:1.1.0
+    image: wonkyto/techni-metrics-collector:1.1.1
     volumes:
       - ./app:/app
       - ./config:/config

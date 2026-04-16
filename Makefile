@@ -1,4 +1,4 @@
-VERSION = 1.1.0
+VERSION = 1.1.1
 IMAGE_NAME ?= wonkyto/techni-metrics-collector:$(VERSION)
 
 build:
@@ -8,12 +8,12 @@ build-pi:
 build-all:
 	docker buildx build --target production --platform linux/amd64,linux/arm64 -t $(IMAGE_NAME) --push .
 lint:
-	docker-compose run --rm lint
+	docker compose run --rm lint
 format:
-	docker-compose run --rm format
+	docker compose run --rm format
 run:
-	docker-compose run --rm run
+	docker compose run --rm run
 test:
-	docker-compose run --rm test
+	docker compose run --rm test
 pytest:
-	docker-compose run --rm pytest
+	docker compose run --rm pytest

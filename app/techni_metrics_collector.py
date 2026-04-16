@@ -301,18 +301,22 @@ def main():
     # Load config file
     config = load_yaml_file(args.config)
 
-    # We will be running this container in the same docker-compose
-    # configuration as influxdb. To ensure we provide enough time
-    # for influxdb to start, we wait 60 seconds
-    time.sleep(60)
-
-    # Make a connection to the InfluxDB Database
-    # Create a new database if it doesn't exist
+    # Wait for InfluxDB to be ready, retrying with backoff (up to ~60 s total).
     influx_client = InfluxDBClient(
         host=config["InfluxDb"]["Host"], port=int(config["InfluxDb"]["Port"])
     )
+    for attempt, delay in enumerate([5, 10, 15, 30], start=1):
+        try:
+            influx_client.ping()
+            break
+        except Exception:
+            logger.info("InfluxDB not ready (attempt %d), retrying in %ds…", attempt, delay)
+            time.sleep(delay)
     influx_client.create_database(config["InfluxDb"]["Database"])
     influx_client.switch_database(config["InfluxDb"]["Database"])
+
+    # Poll immediately so the first data point isn't delayed 5 minutes.
+    poll(influx_client, config["Gateway"])
 
     # Create a scheduler, and run the poller every 5 minutes
     scheduler = BackgroundScheduler()
